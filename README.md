@@ -78,6 +78,8 @@ implemented iteratively.
 
 ##### Type system
 Simple, with support for generic functions. Subtyping is not implemented.
+Type inference is local. Variables can be defined with `var` if their type can be determined
+from the right hand side or the assignment. It also works for lambdas.
 
 Here's in an example of a `length` function.
 ```
