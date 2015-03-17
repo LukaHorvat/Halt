@@ -1,0 +1,15 @@
+import Data
+
+fn :: String -> Bool
+fn str ->
+    var len = List.length 100 str
+    print ("Trace: " ++ len)
+    if len > 5
+        return True
+    else return False
+
+main :: ()
+main ->
+    time 1000
+        for i from 1 to 10
+            IO.print i

@@ -1,0 +1,5 @@
+main :: ()
+main ->
+    time 1b
+        var input = IO.getLine 500m
+        IO.print input

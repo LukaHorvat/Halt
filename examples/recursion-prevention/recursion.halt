@@ -1,0 +1,9 @@
+fn1 :: Int -> Int
+fn1 x -> fn2 x
+
+fn2 :: Int -> Int
+fn2 x -> fn1 x
+
+main :: ()
+main ->
+    fn1 5
