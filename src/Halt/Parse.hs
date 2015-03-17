@@ -1,7 +1,7 @@
 module Halt.Parse where
 
 import Halt.AST
-import Control.Applicative ((<*), (<$>), liftA2, Applicative)
+import Control.Applicative ((<*), (*>), (<$>), liftA2, Applicative)
 import Data.Monoid
 import Text.Parsec
 import Text.Parsec.String
@@ -21,6 +21,9 @@ int = withSpaces $ read <$> many digit
 
 double :: Parser Double
 double = withSpaces $ read <$> many1 digit <++> option "" (string "." <++> many1 digit)
+
+stringLiteral :: Parser String
+stringLiteral = withSpaces $ char '"' *> many (noneOf "\"") <* char '"'
 
 parseHelper :: Parser a -> String -> a
 parseHelper parser str = case parse parser "" str of
