@@ -30,22 +30,25 @@ data TypeLiteral = --        typeParam
 data Statement = --         type        name   value
                  Assignment TypeLiteral String Expression
                  -- condition  then      else
-               | If Expression Statement (Maybe Statement)
+               | If Expression [Statement] (Maybe [Statement])
                  --  var    start      bound body
-               | For String Expression Bound Statement
+               | For String Expression Bound [Statement]
                  --     value
                | Return Expression
-                 --    exps
-               | Block [Statement]
                  --        expr
                | NakedExpr Expression
                deriving Show
 
-data Bound = Bound Expression (Maybe Expression) deriving Show
+data Bound = --          bound
+             StaticBound Expression
+             --                     dynamic    static
+           | DynamicWithStaticBound Expression Expression
+           deriving Show
 
 data Expression = --          function   arguments
                   FunctionApp Expression [Expression]
-                | IntLiteral Int
+                | IntLiteral Integer
                 | DoubleLiteral Double
                 | StringLiteral String
+                | Identifier String
                 deriving Show

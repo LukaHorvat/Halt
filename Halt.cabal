@@ -58,7 +58,9 @@ executable Halt
 
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.7 && <4.8,
-                       parsec == 3.1.*
+                       parsec == 3.1.*,
+                       indents == 0.3.*,
+                       transformers == 0.3.*
 
   -- Directories containing source files.
   hs-source-dirs:      src

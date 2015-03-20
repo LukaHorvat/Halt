@@ -3,11 +3,12 @@ module Halt.Parse where
 import Halt.AST
 import Control.Applicative hiding ((<|>))
 import Data.Monoid
-import Text.Parsec hiding (token)
-import Text.Parsec.String
+import Text.Parsec hiding (token, State)
 import Text.Parsec.Expr
 import Text.Parsec.Language
 import Text.Parsec.Token
+import Text.Parsec.Indent
+import Control.Monad.Trans.State
 
 (<++>) :: Applicative f => f [a] -> f [a] -> f [a]
 (<++>) = liftA2 (++)
@@ -19,10 +20,29 @@ monoidFromMaybe :: Monoid a => Maybe a -> a
 monoidFromMaybe Nothing  = mempty
 monoidFromMaybe (Just a) = a
 
-parser = makeTokenParser haskellStyle
+style :: GenLanguageDef String () (State SourcePos)
+style = emptyDef { commentStart    = "{-"
+                 , commentEnd      = "-}"
+                 , commentLine     = "--"
+                 , nestedComments  = True
+                 , identStart      = letter
+                 , identLetter     = alphaNum <|> oneOf "_'"
+                 , opStart         = opLetter style
+                 , opLetter	       = oneOf ":!#$%&*+./<=>?@\\^|-~"
+                 , reservedOpNames = []
+                 , reservedNames   = []
+                 , caseSensitive   = True }
+
+type Parser a = IndentParser String () a
+
+parser :: GenTokenParser String () (State SourcePos)
+parser = makeTokenParser style
+
+iParse :: Parser a -> SourceName -> String -> Either ParseError a
+iParse aParser sourceName' input = runIndent sourceName' $ runParserT aParser () sourceName' input
 
 parseHelper :: Parser a -> String -> a
-parseHelper pars str = case parse pars "" str of
+parseHelper pars str = case iParse pars "" str of
     Left err -> error $ show err
     Right a  -> a
 
@@ -51,26 +71,36 @@ assignment :: Parser Statement
 assignment = Assignment <$> typeTerm' <*> identifier parser <* word "=" <*> expression
 
 if' :: Parser Statement
-if' = If <$> (word "if" *> expression) <*> statement <*> optionMaybe (word "else" *> statement)
+if' = ifThen <*> else'
+    where if''   = (If <$> (word "if" *> expression))
+          ifThen = withBlock ($) if'' statement
+          else'  = (optionMaybe $ withBlock' (word "else") statement)
 
 for :: Parser Statement
-for = For <$> (word "for" *> identifier parser)
-          <*> (word "from" *> expression)
-          <*> (word "to" *> bound)
-          <*> statement
-          where bound = Bound <$> expression <*> optionMaybe (word "|" *> expression)
+for = withBlock ($) for' statement
+    where withDyn = DynamicWithStaticBound <$> expression <*> (word "|" *> expression)
+          static  = StaticBound <$> expression
+          bound   = try withDyn <|> static
+          for'    = For <$> (word "for" *> identifier parser)
+                        <*> (word "from" *> expression)
+                        <*> (word "to" *> bound)
 
 return' :: Parser Statement
 return' = Return <$> (word "return" *> expression)
 
 statement :: Parser Statement
-statement = if'
-        <|> for
-        <|> return'
-        <|> assignment
+statement = try if'
+        <|> try for
+        <|> try return'
+        <|> try assignment
+        <|> NakedExpr <$> expression
 
 functionApp :: Parser Expression
 functionApp = FunctionApp <$> expression <*> many1 expression
 
 expression :: Parser Expression
-expression = functionApp
+expression = try (DoubleLiteral <$> float parser)
+         <|> IntLiteral <$> integer parser
+         <|> StringLiteral <$> stringLiteral parser
+         <|> Identifier <$> identifier parser
+         <|> functionApp
