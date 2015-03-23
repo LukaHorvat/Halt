@@ -42,9 +42,7 @@ Then it's up to the programmer to determine what a value of a single tick is.
 ##### Restrictions
 There are things you can't do with **Halt**. The limitations are pretty big so it's really something to be aware of.
 
-You cannot recurse. The compiler doesn't let you write code where function calls form a cycle.
-That's the functional equivalent of looping/jumps, so of course, loops themselves are also
-limited.
+Loops are limited.
 There's no `goto`. There are no `while` loops. You can use `for` loops with constant
 bounds, or with dynamic bounds but with specified constant maximum of those bounds.
 
@@ -68,13 +66,30 @@ You can think of ticks as something in between the big-O and the actual time.
 Adding two integers is one tick. Comparing them, one tick. Calling a function, one tick.
 
 Due to the language compiling to other languages, their respective compilers will most likely optimize
-the code. **Halt** assume any optimizations. It talks about upper bounds and tries not to make any
-assumptions about the lower ones.
+the code. **Halt** doesn't assume any optimizations. It talks about upper bounds and tries not to
+make any assumptions about the lower ones.
 
 ##### Functions
 **Halt** implements some functional programming aspects. All functions are curried and first-class.
-There are lambda expressions. However, since recursion is not allowed, most functions should be
-implemented iteratively.
+There are lambda expressions.
+
+Recursion has some important limitations.
+Basically, a function cannot call itself, though that isn't strictly true.
+No single function can reference another one that's defined after it, and it also cannot reference
+itself. However, due to higher order functions, it is possible for a it to call itself via
+the function passed to it.
+
+For example, code like this works
+```
+f :: Int -> Int
+f x -> x + 1
+
+g :: Bound -> [Int] -> [Int]
+g b xs -> map b f xs
+
+map 2 (g 3) [[1, 2, 3], [4, 5, 6]]
+```
+even though `map` ends up calling itself.
 
 ##### Type system
 Simple, with support for generic functions. Subtyping is not implemented.
@@ -103,7 +118,12 @@ while it's allowed to write a type like this,
 ```
 data Stream a = Cons a (Stream a)
 ```
-due to not being able to recurse, you actually cannot make an instance of it.
+due to not being able to recurse infinitely, you actually cannot make an instance of it.
+Type recursion in a negative position is also not allowed. You can't write
+```
+data Rec a = Constructor (Rec a -> a)
+```
+
 Full support for pattern matching on constructors is implemented.
 Algebraic types are immutable.
 
@@ -120,3 +140,4 @@ Character cat =
 IO.print cat.name
 cat.name = "Bob"
 ```
+Records are mutable.
