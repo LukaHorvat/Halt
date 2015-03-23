@@ -58,23 +58,27 @@ typeLiteral = buildExpressionParser [[Infix (word "->" *> return Function) Assoc
 typeIdentifier :: Parser String
 typeIdentifier = upper <:> identifier parser
 
+-- | Function type declaration
 typeTerm :: Parser TypeLiteral
 typeTerm = parens parser typeLiteral
        <|> Parameter <$> token lower
        <|> try (Generic <$> typeIdentifier <*> many1 typeTerm)
        <|> Concrete <$> typeIdentifier
 
+-- | Variable type declaration
 typeTerm' :: Parser TypeLiteral
-typeTerm' = try (word "var" *> return Var) <|> typeTerm
+typeTerm' = try (word "var" *> return Var)
+        <|> Concrete <$> typeIdentifier
+        <|> parens parser typeTerm
 
 assignment :: Parser Statement
-assignment = Assignment <$> typeTerm' <*> identifier parser <* word "=" <*> expression
+assignment = Assignment <$> typeTerm' <*> (identifier parser <* word "=") <*> expression
 
 if' :: Parser Statement
 if' = ifThen <*> else'
-    where if''   = (If <$> (word "if" *> expression))
+    where if''   = If <$> (word "if" *> expression)
           ifThen = withBlock ($) if'' statement
-          else'  = (optionMaybe $ withBlock' (word "else") statement)
+          else'  = optionMaybe $ withBlock' (word "else") statement
 
 for :: Parser Statement
 for = withBlock ($) for' statement
@@ -95,12 +99,34 @@ statement = try if'
         <|> try assignment
         <|> NakedExpr <$> expression
 
+identifier' :: Parser Expression
+identifier' = Identifier <$> identifier parser
+
+parensExpression :: Parser Expression
+parensExpression = parens parser expression
+
+identOrParens :: Parser Expression
+identOrParens = parensExpression <|> identifier'
+
 functionApp :: Parser Expression
-functionApp = FunctionApp <$> expression <*> many1 expression
+functionApp = FunctionApp <$> identOrParens <*> many1 identOrParens
+
+expressionTerm :: Parser Expression
+expressionTerm = try (DoubleLiteral <$> float parser)
+             <|> IntLiteral <$> integer parser
+             <|> StringLiteral <$> stringLiteral parser
+             <|> try functionApp
+             <|> Identifier <$> identifier parser
+
+type Op = Operator String () (State SourcePos) Expression
+
+makeOp :: String -> Op
+makeOp s = Infix (word s *> return combine) AssocLeft
+    where combine left right = FunctionApp (Identifier s) [left, right]
+
+opTable :: [[Op]]
+opTable = [[ makeOp "*", makeOp "/" ]
+          ,[ makeOp "+", makeOp "-" ]]
 
 expression :: Parser Expression
-expression = try (DoubleLiteral <$> float parser)
-         <|> IntLiteral <$> integer parser
-         <|> StringLiteral <$> stringLiteral parser
-         <|> Identifier <$> identifier parser
-         <|> functionApp
+expression = buildExpressionParser opTable expressionTerm
