@@ -1,4 +1,6 @@
 module Halt.Main where
 
 import Halt.AST
-import Halt.Parse
+import Halt.Parsing.Common
+import Halt.Parsing.Elements
+import Halt.Parsing.Parse
