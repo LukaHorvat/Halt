@@ -21,10 +21,3 @@ singleOrBlock :: Parser a -> Parser [a]
 singleOrBlock p = (return <$> p) <|> block
     where block = modify (+ 1) *> many1 (withIndent p) <* modify (subtract 1)
           withIndent p' = try $ (char '\n' >> get >>= (`count` char '\t')) *> p'
-
-data Test = Line String | Block [Test] deriving Show
-
-test :: Parser Test
-test = block <|> line
-    where block = Block <$> (word "block" *> singleOrBlock test)
-          line  = Line  <$> lowerIdentifier

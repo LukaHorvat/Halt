@@ -3,15 +3,13 @@ module Halt.Parsing.Parse where
 import Halt.AST
 import Halt.Parsing.Elements
 import Halt.Parsing.Common
+import Halt.Parsing.Indent
 import Control.Applicative hiding ((<|>), many)
 import Data.Monoid
-import Text.Parsec hiding (token, State)
+import Text.Parsec.Combinator
+import Text.Parsec hiding (State)
 import Text.Parsec.Expr
-import Text.Parsec.Language
-import Text.Parsec.Indent
-import Control.Monad.Trans.State
-
-type Parser a = IndentParser String () a
+import Control.Monad.State
 
 typeLiteral :: Parser TypeLiteral
 typeLiteral = buildExpressionParser [[Infix (word "->" *> return Function) AssocRight]] typeTerm
@@ -35,11 +33,11 @@ assignment = Assignment <$> typeTerm' <*> (lowerIdentifier <* word "=") <*> expr
 if' :: Parser Statement
 if' = ifThen <*> else'
     where if''   = If <$> (word "if" *> expression)
-          ifThen = withBlock ($) if'' statement
-          else'  = optionMaybe $ withBlock' (word "else") statement
+          ifThen = if'' <*> (word "then" *> singleOrBlock statement)
+          else'  = optionMaybe $ word "else" *> singleOrBlock statement
 
 for :: Parser Statement
-for = withBlock ($) for' statement
+for = for' <*> singleOrBlock statement
     where withDyn = DynamicWithStaticBound <$> expression <*> (word "|" *> expression)
           static  = StaticBound <$> expression
           bound   = try withDyn <|> static
@@ -69,11 +67,11 @@ functionApp = FunctionApp <$> identOrParens <*> many1 identOrParens
 expressionTerm :: Parser Expression
 expressionTerm = try (DoubleLiteral <$> doubleLiteral)
              <|> IntLiteral <$> intLiteral
-             <|> StringLiteral <$> stringLiteral parser
+             <|> StringLiteral <$> stringLiteral
              <|> try functionApp
              <|> Identifier <$> lowerIdentifier
 
-type Op = Operator String () (State SourcePos) Expression
+type Op = Operator String IndentLevel (State IndentLevel) Expression
 
 makeOp :: String -> Op
 makeOp s = Infix (word s *> return combine) AssocLeft
@@ -114,7 +112,5 @@ data' = Data
 record :: Parser Declaration
 record = Record
      <$> (word "record" *> capitalIdentifier)
-     <*> (withBlock' (word "=") field)
+     <*> (word "=" *> singleOrBlock field)
      where field = (,) <$> lowerIdentifier <*> (word "::" *> typeLiteral)
-
---Text.Parsec.Token eats whitespace too agressively. Rethink

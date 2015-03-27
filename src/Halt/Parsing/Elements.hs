@@ -33,7 +33,7 @@ lowerIdentifier = lower <:> option "" (many identifierChar) <* whiteSpace <?> "l
 capitalIdentifier :: CharStream s m => ParsecT s u m String
 capitalIdentifier = upper <:> option "" lowerIdentifier <* whiteSpace <?> "upper case identifier"
 
-parens :: CharStream s m => ParsecT s u m String -> ParsecT s u m String
+parens :: CharStream s m => ParsecT s u m a -> ParsecT s u m a
 parens p = between (word "(") (word ")") p
 
 intLiteral :: CharStream s m => ParsecT s u m Integer
