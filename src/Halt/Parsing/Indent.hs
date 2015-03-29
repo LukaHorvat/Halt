@@ -1,23 +1,30 @@
 module Halt.Parsing.Indent where
 
-import Halt.AST
-import Halt.Parsing.Common
-import Halt.Parsing.Elements
 import Control.Applicative hiding ((<|>), many, optional)
-import Data.Monoid
-import Control.Monad.State.Class
-import Control.Monad.State
+import Control.Monad
+import Data.Functor.Identity
 import Text.Parsec hiding (token, State)
 
 type IndentLevel = Int
-type Parser a = ParsecT String IndentLevel (State IndentLevel) a
+type Parser a = ParsecT String IndentLevel Identity a
 
 parseHelper :: Parser a -> String -> a
-parseHelper pars str = case evalState (runParserT pars 0 "" str) 0 of
+parseHelper pars str = case runParser pars 0 "" str of
     Left err -> error $ show err
     Right a  -> a
 
+withIndent :: Parser a -> Parser a
+withIndent p = try (getState >>= indents) *> p
+
+indent :: Parser ()
+indent = void (char '\t') <|> void (count 4 (char ' ')) <?> "indentation"
+
+indents :: Int -> Parser ()
+indents n = void (count n indent) <?> (show n) ++ " indentation levels"
+
+indented :: Parser a -> Parser a
+indented p = try $ modifyState (+ 1) *> p <* modifyState (subtract 1)
+
 singleOrBlock :: Parser a -> Parser [a]
-singleOrBlock p = (return <$> p) <|> block
-    where block = modify (+ 1) *> many1 (withIndent p) <* modify (subtract 1)
-          withIndent p' = try $ (char '\n' >> get >>= (`count` char '\t')) *> p'
+singleOrBlock p = (char '\n' *> block)
+    where block = indented $ many1 (withIndent p)

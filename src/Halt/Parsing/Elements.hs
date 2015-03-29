@@ -37,15 +37,15 @@ parens :: CharStream s m => ParsecT s u m a -> ParsecT s u m a
 parens p = between (word "(") (word ")") p
 
 intLiteral :: CharStream s m => ParsecT s u m Integer
-intLiteral = read <$> many1 digit
+intLiteral = read <$> (many1 digit <* whiteSpace) <?> "int literal"
 
 doubleLiteral :: CharStream s m => ParsecT s u m Double
-doubleLiteral = read <$> many digit <++> option "" (char '.' <:> many1 digit)
+doubleLiteral = read <$> (many digit <* whiteSpace) <++> (char '.' <:> many1 digit) <?> "double literal"
 
 --[taken from Text.Parsec.Token] modified formatting and converted to applicative style
 stringLiteral :: CharStream s m => ParsecT s u m String
-stringLiteral = (collect <$> str) <?> "literal string"
-    where str     = between (char '"') (char '"' <?> "end of string") (many stringChar)
+stringLiteral = (collect <$> str) <?> "string literal"
+    where str     = between (char '"') (word "\"" <?> "end of string") (many stringChar)
           collect = fromJust . foldr (<>) (Just "") . map (fmap return)
 
 stringChar :: CharStream s m => ParsecT s u m (Maybe Char)
