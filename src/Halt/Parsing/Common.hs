@@ -8,7 +8,6 @@ import Text.Parsec hiding (token, State)
     import Text.Parsec.String
 -}
 import Data.Functor.Identity
-import Control.Monad.State
 
 type CharStream s m = Stream s m Char
 
