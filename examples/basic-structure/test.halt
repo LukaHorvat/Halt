@@ -1,0 +1,13 @@
+fn :: Int -> Int
+fn a ->
+    if len > 5 then
+        return True
+        return True
+    else
+        return False
+        return False
+    return True
+
+fn :: Int -> Int
+fn b ->
+    return True
