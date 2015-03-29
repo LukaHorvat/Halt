@@ -7,7 +7,7 @@ data Declaration = --     module
                    --           name   type
                  | FunctionType String TypeLiteral
                    --           name   args     body
-                 | FunctionDecl String [String] Statement
+                 | FunctionDecl String [String] [Statement]
                    --   name   generics    cases
                    --                 constr    types
                  | Data String [Char] [(String, [TypeLiteral])]
@@ -25,6 +25,7 @@ data TypeLiteral = --        typeParam
                    --       from        to
                  | Function TypeLiteral TypeLiteral
                  | Var
+                 | Unit
                  deriving Show
 
 data Statement = --         type        name   value
