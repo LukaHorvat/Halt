@@ -12,32 +12,36 @@ import Data.Functor.Identity
 
 typeLiteral :: Parser TypeLiteral
 typeLiteral = buildExpressionParser [[Infix (word "->" *> return Function) AssocRight]] typeTerm
+          <?> "function type"
 
 -- | Function type declaration
 typeTerm :: Parser TypeLiteral
 typeTerm =     parens typeLiteral
-       <|>     Parameter <$> (lower <* spaces)
-       <|> try (Generic  <$> capitalIdentifier <*> many1 typeTerm)
-       <|>     Concrete  <$> capitalIdentifier
-       <|>     (word "()" *> return Unit)
+       <|>     (Parameter <$> (lower <* spaces) <?> "type parameter")
+       <|> try (Generic  <$> capitalIdentifier <*> many1 typeTerm <?> "generic type")
+       <|>     (Concrete  <$> capitalIdentifier <?> "concrete type")
+       <|>     (word "()" *> return Unit <?> "()")
+       <?> "type term"
 
 -- | Variable type declaration
 typeTerm' :: Parser TypeLiteral
-typeTerm' = try (word "var" *> return Var)
-        <|>     Concrete <$> capitalIdentifier
+typeTerm' = try (word "var" *> return Var <?> "var")
+        <|>     (Concrete <$> capitalIdentifier <?> "concrete type")
         <|>     parens typeTerm
+        <?> "type"
 
 assignment :: Parser Statement
-assignment = Assignment <$> typeTerm' <*> (lowerIdentifier <* word "=") <*> expression
+assignment = Assignment
+         <$> typeTerm' <*> (lowerIdentifier <* word "=") <*> expression <?> "assignments"
 
 if' :: Parser Statement
-if' = ifThen <*> else'
+if' = ifThen <*> else' <?> "if statement"
     where if''   = If <$> (word "if" *> expression)
           ifThen = if'' <*> (word "then" *> singleOrBlock statement)
           else'  = Just <$> (withIndent (word "else") *> singleOrBlock statement)
 
 for :: Parser Statement
-for = for' <*> singleOrBlock statement
+for = for' <*> singleOrBlock statement <?> "for statement"
     where withDyn = DynamicWithStaticBound <$> expression <*> (word "|" *> expression)
           static  = StaticBound <$> expression
           bound   = try withDyn <|> static
@@ -46,18 +50,18 @@ for = for' <*> singleOrBlock statement
                         <*> (word "to"   *> bound)
 
 return' :: Parser Statement
-return' = Return <$> (word "return" *> expression)
+return' = Return <$> (word "return" *> expression) <?> "return statement"
 
 statement :: Parser Statement
-statement = cases <* optional (char '\n')
+statement = cases <* optional (char '\n') <?> "statement"
     where cases = try if'
               <|> try for
-              <|> return'
+              <|>     return'
               <|> try assignment
-              <|>     NakedExpr <$> expression
+              <|>     (NakedExpr <$> expression <?> "naked expression")
 
 identifier' :: Parser Expression
-identifier' = Identifier <$> anyIdentifier
+identifier' = Identifier <$> anyIdentifier <?> "any indentifier"
     where anyIdentifier = (concat <$> many (try (capitalIdentifier <++> word ".")))
                      <++> (capitalIdentifier <|> lowerIdentifier)
 
@@ -70,13 +74,14 @@ argument :: Parser Expression
 argument = parens expression <|> identifier' <|> literal
 
 functionApp :: Parser Expression
-functionApp = FunctionApp <$> fn <*> many1 argument
+functionApp = FunctionApp <$> fn <*> many1 argument <?> "function application"
     where fn = parens expression <|> identifier'
 
 expressionTerm :: Parser Expression
 expressionTerm =     literal
              <|> try functionApp
              <|>     identifier'
+             <?> "expression term"
 
 type Op = Operator String IndentLevel Identity Expression
 
