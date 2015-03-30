@@ -14,7 +14,7 @@ data Declaration = --     module
                    --     name        fields
                    --            fieldName fieldType
                  | Record String [(String, TypeLiteral)]
-                 deriving Show
+                 deriving (Show, Eq)
 
 data TypeLiteral = --        typeParam
                    Parameter Char
@@ -26,7 +26,7 @@ data TypeLiteral = --        typeParam
                  | Function TypeLiteral TypeLiteral
                  | Var
                  | Unit
-                 deriving Show
+                 deriving (Show, Eq)
 
 data Statement = --         type        name   value
                  Assignment TypeLiteral String Expression
@@ -38,13 +38,13 @@ data Statement = --         type        name   value
                | Return Expression
                  --        expr
                | NakedExpr Expression
-               deriving Show
+               deriving (Show, Eq)
 
 data Bound = --          bound
              StaticBound Expression
              --                     dynamic    static
            | DynamicWithStaticBound Expression Expression
-           deriving Show
+           deriving (Show, Eq)
 
 data Expression = --          function   arguments
                   FunctionApp Expression [Expression]
@@ -52,4 +52,4 @@ data Expression = --          function   arguments
                 | DoubleLiteral Double
                 | StringLiteral String
                 | Identifier String
-                deriving Show
+                deriving (Show, Eq)

@@ -9,6 +9,7 @@ import Text.Parsec.Combinator
 import Text.Parsec hiding (State)
 import Text.Parsec.Expr
 import Data.Functor.Identity
+import Control.Monad
 
 typeLiteral :: Parser TypeLiteral
 typeLiteral = buildExpressionParser [[Infix (word "->" *> return Function) AssocRight]] typeTerm
@@ -16,18 +17,18 @@ typeLiteral = buildExpressionParser [[Infix (word "->" *> return Function) Assoc
 
 -- | Function type declaration
 typeTerm :: Parser TypeLiteral
-typeTerm =     parens typeLiteral
+typeTerm = try (word "()" *> return Unit <?> "()")
+       <|>     parens typeLiteral
        <|>     (Parameter <$> (lower <* spaces) <?> "type parameter")
        <|> try (Generic  <$> capitalIdentifier <*> many1 typeTerm <?> "generic type")
        <|>     (Concrete  <$> capitalIdentifier <?> "concrete type")
-       <|>     (word "()" *> return Unit <?> "()")
        <?> "type term"
 
 -- | Variable type declaration
 typeTerm' :: Parser TypeLiteral
 typeTerm' = try (word "var" *> return Var <?> "var")
         <|>     (Concrete <$> capitalIdentifier <?> "concrete type")
-        <|>     parens typeTerm
+        <|>     parens typeLiteral
         <?> "type"
 
 assignment :: Parser Statement
@@ -35,10 +36,16 @@ assignment = Assignment
          <$> typeTerm' <*> (lowerIdentifier <* word "=") <*> expression <?> "assignments"
 
 if' :: Parser Statement
-if' = ifThen <*> else' <?> "if statement"
-    where if''   = If <$> (word "if" *> expression)
-          ifThen = if'' <*> (word "then" *> singleOrBlock statement)
-          else'  = Just <$> (withIndent (word "else") *> singleOrBlock statement)
+if' = do
+    cond <- word "if" *> expression
+    isMulti <- word "then" *> optionMaybe (lookAhead $ char '\n')
+    thenBlock <- singleOrBlock statement
+    elseBlock <- optionMaybe $ do
+        --if the then block is on the same line, then there is no indentation before 'else'
+        void $ case isMulti of Nothing -> word "else"
+                               _       -> withIndent (word "else")
+        singleOrBlock statement
+    return $ If cond thenBlock elseBlock
 
 for :: Parser Statement
 for = for' <*> singleOrBlock statement <?> "for statement"
@@ -60,10 +67,16 @@ statement = cases <* optional (char '\n') <?> "statement"
               <|> try assignment
               <|>     (NakedExpr <$> expression <?> "naked expression")
 
+keywords :: [String]
+keywords = ["if", "then", "else", "for", "from", "to", "return", "var"]
+
 identifier' :: Parser Expression
-identifier' = Identifier <$> anyIdentifier <?> "any indentifier"
+identifier' = anyIdentifier >>= notKeyword <?> "any indentifier"
     where anyIdentifier = (concat <$> many (try (capitalIdentifier <++> word ".")))
                      <++> (capitalIdentifier <|> lowerIdentifier)
+          notKeyword ident | ident `notElem` keywords = return $ Identifier ident
+                           | otherwise                = fail message
+                           where message = "keyword " ++ ident ++ " cannot be used as an identifier"
 
 literal :: Parser Expression
 literal = try (DoubleLiteral <$> doubleLiteral)
@@ -135,7 +148,7 @@ record = Record
      <$> (word "record" *> capitalIdentifier)
      <*> (word "=" *> singleOrBlock field)
      <?> "record declaration"
-     where field = (,) <$> lowerIdentifier <*> (word "::" *> typeLiteral)
+     where field = (,) <$> lowerIdentifier <*> (word "::" *> typeLiteral <* optional (char '\n'))
 
 declaration :: Parser Declaration
 declaration = try importAs
