@@ -31,7 +31,7 @@ lowerIdentifier :: CharStream s m => ParsecT s u m String
 lowerIdentifier = lower <:> option "" (many identifierChar) <* whiteSpace <?> "lower case identifier"
 
 capitalIdentifier :: CharStream s m => ParsecT s u m String
-capitalIdentifier = upper <:> option "" lowerIdentifier <* whiteSpace <?> "upper case identifier"
+capitalIdentifier = upper <:> option "" (many identifierChar) <* whiteSpace <?> "upper case identifier"
 
 parens :: CharStream s m => ParsecT s u m a -> ParsecT s u m a
 parens p = between (word "(") (word ")") p
@@ -127,3 +127,6 @@ ascii3 = [ '\NUL', '\SOH', '\STX', '\ETX', '\EOT', '\ENQ', '\ACK'
          , '\BEL', '\DLE', '\DC1', '\DC2', '\DC3', '\DC4', '\NAK'
          , '\SYN', '\ETB', '\CAN', '\SUB', '\ESC', '\DEL' ]
 --[/taken from Text.Parsec.Token]
+
+operator :: CharStream s m => ParsecT s u m String
+operator = many (satisfy isSymbol)

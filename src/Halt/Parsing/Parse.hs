@@ -87,8 +87,9 @@ argument :: Parser Expression
 argument = parens expression <|> identifier' <|> literal
 
 functionApp :: Parser Expression
-functionApp = FunctionApp <$> fn <*> many1 argument <?> "function application"
-    where fn = parens expression <|> identifier'
+functionApp = FunctionApp <$> fn <*> many1 (try argument) <?> "function application"
+    where fn = try (parens operator') <|> try (parens expression) <|> identifier'
+          operator' = Identifier <$> operator
 
 expressionTerm :: Parser Expression
 expressionTerm =     literal
@@ -160,8 +161,12 @@ declaration = try importAs
 
 program :: Parser [Declaration]
 program = many1 (declaration <* skipMany (oneOf "\n\t "))
+        --FIXME: Parsing empty lines is potentially broken
 
 parseFile :: String -> IO [Declaration]
 parseFile path = do
     file <- readFile path
     return $ parseHelper program file
+
+basicAST :: IO [Declaration]
+basicAST = parseFile "./examples/basic-structure/basic.halt"

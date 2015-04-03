@@ -27,4 +27,4 @@ indented p = try $ modifyState (+ 1) *> p <* modifyState (subtract 1)
 
 singleOrBlock :: Parser a -> Parser [a]
 singleOrBlock p = (char '\n' *> block) <|> (return <$> p)
-    where block = indented $ many1 (withIndent p)
+    where block = indented $ many1 (withIndent p) --TODO: Parsing empty lines
