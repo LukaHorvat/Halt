@@ -9,7 +9,7 @@ data Declaration = --     module
                    --           name   args     body
                  | FunctionDecl String [String] [Statement]
                    --   name   generics    cases
-                   --                 constr    types
+                   --                  constr   types
                  | Data String [Char] [(String, [TypeLiteral])]
                    --     name        fields
                    --            fieldName fieldType
