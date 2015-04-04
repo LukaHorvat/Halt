@@ -4,6 +4,7 @@ module Halt.Parsing.Elements where
 import Control.Applicative hiding ((<|>), many)
 import Text.Parsec hiding (token, State)
 import Halt.Parsing.Common
+import Halt.Utility
 import Control.Monad
 import Data.Char
 import Data.Monoid

@@ -5,6 +5,7 @@ import Test.Hspec.Core.Runner
 import Halt.Parsing.Parse
 import Halt.Parsing.Indent
 import Halt.AST
+import Parsing.AST
 
 conf :: Config
 conf = defaultConfig

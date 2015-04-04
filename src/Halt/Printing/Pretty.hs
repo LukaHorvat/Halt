@@ -44,6 +44,15 @@ parenthesesIfFunctionApp e = parenthesesIf (condition e) (prettyShow e)
 isOperator :: String -> Bool
 isOperator = all isSymbol
 
+isSimpleType :: TypeLiteral -> Bool
+isSimpleType (Generic _ _)  = False
+isSimpleType (Function _ _) = False
+isSimpleType _              = True
+
+isFunction :: TypeLiteral -> Bool
+isFunction (Function _ _) = True
+isFunction _              = False
+
 instance PrettyShow Declaration where
     prettyShow = \case
         Import s           -> "import " ++ s
@@ -56,25 +65,24 @@ instance PrettyShow Declaration where
                            ++ (unlines' $ map (("\t" ++) . (\(fn, t) -> fn ++ " :: " ++ prettyShow t)) f)
 
 instance PrettyShow (String, [TypeLiteral]) where
-    prettyShow (c, t) = c ++ " " ++ (unwords $ map (inParentheses . prettyShow) t)
+    prettyShow (c, ts) = c ++ " "
+                     ++ (unwords $ map (\t -> parenthesesUnless (isSimpleType t) $ prettyShow t) ts)
 
 instance PrettyShow TypeLiteral where
     prettyShow = \case
         Parameter c  -> return c
         Concrete s   -> s
         Generic s t  -> prettyShow (s, t)
-        Function f t -> inParentheses $ prettyShow f ++ " -> " ++ prettyShow t
+        Function f t -> parenthesesIf (isFunction t) (prettyShow f) ++ " -> " ++ prettyShow t
         Var          -> "var"
         Unit         -> "()"
 
 instance PrettyShow Statement where
     prettyShow = \case
-        Assignment t n v -> parenthesesUnless (t == Var) (prettyShow t)
+        Assignment t n v -> parenthesesUnless (isSimpleType t) (prettyShow t)
                          ++ " " ++ n ++ " = " ++ prettyShow v
         If c t e         -> "if " ++ prettyShow c ++ " then\n" ++ showStatements t
                          ++ fromMaybe "" (fmap (("\nelse\n" ++) . showStatements) e)
-                         --FIXME: Prints extra empty lines
-
         For v s bnd bdy  -> "for " ++ v ++ " from " ++ prettyShow s ++ " to " ++ prettyShow bnd
                          ++ "\n" ++ showStatements bdy
         Return v         -> "return " ++ prettyShow v

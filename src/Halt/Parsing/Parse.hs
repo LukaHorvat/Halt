@@ -2,8 +2,8 @@ module Halt.Parsing.Parse where
 
 import Halt.AST
 import Halt.Parsing.Elements
-import Halt.Parsing.Common
 import Halt.Parsing.Indent
+import Halt.Utility
 import Control.Applicative hiding ((<|>), many, optional)
 import Text.Parsec.Combinator
 import Text.Parsec hiding (State)
