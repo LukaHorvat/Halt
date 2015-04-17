@@ -35,7 +35,7 @@ capitalIdentifier :: CharStream s m => ParsecT s u m String
 capitalIdentifier = upper <:> option "" (many identifierChar) <* whiteSpace <?> "upper case identifier"
 
 parens :: CharStream s m => ParsecT s u m a -> ParsecT s u m a
-parens p = between (word "(") (word ")") p
+parens = between (word "(") (word ")")
 
 intLiteral :: CharStream s m => ParsecT s u m Integer
 intLiteral = read <$> (many1 digit <* whiteSpace) <?> "int literal"
@@ -47,7 +47,7 @@ doubleLiteral = read <$> (many digit <* whiteSpace) <++> (char '.' <:> many1 dig
 stringLiteral :: CharStream s m => ParsecT s u m String
 stringLiteral = (collect <$> str) <?> "string literal"
     where str     = between (char '"') (word "\"" <?> "end of string") (many stringChar)
-          collect = fromJust . foldr (<>) (Just "") . map (fmap return)
+          collect = fromJust . foldr ((<>) . fmap return) (Just "")
 
 stringChar :: CharStream s m => ParsecT s u m (Maybe Char)
 stringChar = (Just <$> stringLetter)
@@ -73,7 +73,7 @@ escapeCode :: CharStream s m => ParsecT s u m Char
 escapeCode = charEsc <|> charNum <|> charAscii <|> charControl <?> "escape code"
 
 charControl :: CharStream s m => ParsecT s u m Char
-charControl = char '^' *> (toEnum <$> (subtract $ fromEnum 'A') <$> fromEnum <$> upper)
+charControl = char '^' *> (toEnum <$> subtract (fromEnum 'A') <$> fromEnum <$> upper)
 
 charNum :: CharStream s m => ParsecT s u m Char
 charNum = toEnum <$> fromInteger <$> num
@@ -107,7 +107,7 @@ number base baseDigit = do
 escMap :: [(Char, Char)]
 escMap = zip "abfnrtv\\\"\'" "\a\b\f\n\r\t\v\\\"\'"
 
-asciiMap :: [([Char], Char)]
+asciiMap :: [(String, Char)]
 asciiMap = zip (ascii3codes ++ ascii2codes) (ascii3 ++ ascii2)
 
 ascii2codes :: [String]
@@ -119,14 +119,11 @@ ascii3codes = [ "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK"
               , "BEL", "DLE", "DC1", "DC2", "DC3", "DC4", "NAK"
               , "SYN", "ETB", "CAN", "SUB", "ESC", "DEL" ]
 
-ascii2 :: [Char]
-ascii2 = [ '\BS', '\HT', '\LF', '\VT', '\FF', '\CR', '\SO'
-         , '\SI', '\EM', '\FS', '\GS', '\RS', '\US', '\SP' ]
+ascii2 :: String
+ascii2 = "\b\t\n\v\f\r\SO\SI\EM\FS\GS\RS\US "
 
-ascii3 :: [Char]
-ascii3 = [ '\NUL', '\SOH', '\STX', '\ETX', '\EOT', '\ENQ', '\ACK'
-         , '\BEL', '\DLE', '\DC1', '\DC2', '\DC3', '\DC4', '\NAK'
-         , '\SYN', '\ETB', '\CAN', '\SUB', '\ESC', '\DEL' ]
+ascii3 :: String
+ascii3 = "\NUL\SOH\STX\ETX\EOT\ENQ\ACK\a\DLE\DC1\DC2\DC3\DC4\NAK\SYN\ETB\CAN\SUB\ESC\DEL"
 --[/taken from Text.Parsec.Token]
 
 operator :: CharStream s m => ParsecT s u m String
