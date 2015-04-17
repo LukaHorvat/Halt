@@ -126,7 +126,10 @@ record = Record <$> capitalIdentifier
 dataCase :: Gen (String, [TypeLiteral])
 dataCase = (,) <$> capitalIdentifier <*> (resize 3 $ listOf $ typeLiteral WithNothing)
 
-newtype Program = Program [Declaration] deriving Show
+newtype Program = Program [Declaration]
+
+instance Show Program where
+    show (Program decls) = prettyShow decls
 
 instance Arbitrary Program where
     arbitrary = do
@@ -134,6 +137,8 @@ instance Arbitrary Program where
         dataTypes <- resize 3 $ listOf1 dataType
         functions <- concatMap (\(t, d) -> [t, d]) <$> (resize 4 $ listOf1 function)
         return $ Program $ imports ++ dataTypes ++ functions
+    shrink (Program [d])   = []
+    shrink (Program decls) = map (Program . return) decls
 
 test :: IO ()
 test = do

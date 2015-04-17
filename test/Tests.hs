@@ -1,10 +1,12 @@
 module Main where
 
 import Test.Hspec
+import Test.QuickCheck
 import Test.Hspec.Core.Runner
 import Halt.Parsing.Parse
 import Halt.Parsing.Indent
 import Halt.AST
+import Halt.Printing.Pretty
 import Parsing.AST
 
 conf :: Config
@@ -96,3 +98,6 @@ main = hspecWith conf $ do
                 FunctionApp (Identifier "+")
                             [ FunctionApp (Identifier "*") [IntLiteral 1, IntLiteral 2]
                             , FunctionApp (Identifier "*") [IntLiteral 3, IntLiteral 4] ]
+    describe "program parser" $ do
+        it "is inverse to pretty printing" $ property $
+            \(Program decls) -> (parseHelper program . prettyShow) decls == decls
