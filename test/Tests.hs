@@ -16,7 +16,7 @@ conf = defaultConfig
 true :: Expression
 true = Identifier "True"
 
-withParser :: (Show a, Eq a) => Parser a -> (String -> a -> Expectation)
+withParser :: (Show a, Eq a) => Parser a -> String -> a -> Expectation
 withParser p from to = parseHelper p from `shouldBe` to
 
 main :: IO ()
@@ -28,8 +28,8 @@ main = hspecWith conf $ do
             "import Test as T" `parsesTo` ImportAs "Test" "T"
         it "parses function type declarations" $
             "fn :: a -> Int -> F a String -> ()" `parsesTo`
-                ( FunctionType "fn"
-                $ Function (Parameter 'a')
+                FunctionType "fn"
+                ( Function (Parameter 'a')
                 $ Function (Concrete "Int")
                 $ Function (Generic "F" [Parameter 'a', Concrete "String"])
                 Unit )
@@ -38,7 +38,7 @@ main = hspecWith conf $ do
                 FunctionDecl "fn" ["x"] [Return true]
         it "parses data declarations" $
             "data List a = Cons a (List a) | Nil" `parsesTo`
-                Data "List" ['a']
+                Data "List" "a"
                      [ ("Cons", [Parameter 'a', Generic "List" [Parameter 'a']])
                      , ("Nil", []) ]
         it "parses record declarations" $
@@ -69,18 +69,18 @@ main = hspecWith conf $ do
                     [ Return true ]
             "for i from 0 to 5\n\treturn True" `parsesTo`
                 For "i" (IntLiteral 0) (StaticBound (IntLiteral 5)) [Return true]
-        it "parses return statements" $ do
+        it "parses return statements" $
             "return True" `parsesTo` Return true
-        it "parses naked expressions" $ do
+        it "parses naked expressions" $
             "True" `parsesTo` NakedExpr true
 
     describe "expression parser" $ do
         let parsesTo = withParser expression
-        it "parses int literals" $ do
+        it "parses int literals" $
             "5" `parsesTo` IntLiteral 5
-        it "parses double literals" $ do
+        it "parses double literals" $
             "5.0" `parsesTo` DoubleLiteral 5
-        it "parses string literals" $ do
+        it "parses string literals" $
             "\"testtest\\n\\\"\"" `parsesTo` StringLiteral "testtest\n\""
         it "parses identifiers" $ do
             "lowerCase" `parsesTo` Identifier "lowerCase"
@@ -93,11 +93,11 @@ main = hspecWith conf $ do
                 FunctionApp (Identifier "fn") [Identifier "y", IntLiteral 5, true]
             "(map fn) list" `parsesTo`
                 FunctionApp (FunctionApp (Identifier "map") [Identifier "fn"]) [Identifier "list"]
-        it "parses infix expressions" $ do
+        it "parses infix expressions" $
             "1 * 2 + 3 * 4" `parsesTo`
                 FunctionApp (Identifier "+")
                             [ FunctionApp (Identifier "*") [IntLiteral 1, IntLiteral 2]
                             , FunctionApp (Identifier "*") [IntLiteral 3, IntLiteral 4] ]
-    describe "program parser" $ do
+    describe "program parser" $ 
         it "is inverse to pretty printing" $ property $
             \(Program decls) -> (parseHelper program . prettyShow) decls == decls
