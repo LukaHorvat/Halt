@@ -1,7 +1,8 @@
-{-# LANGUAGE TemplateHaskell, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Parsing.AST where
 
-import Test.QuickCheck
+import Test.QuickCheck hiding (variant)
 import Halt.AST
 import Halt.Utility
 import Control.Applicative
@@ -19,25 +20,26 @@ lowerLetter :: Gen Char
 lowerLetter = toLower <$> capitalLetter
 
 identifierSymbol :: Gen Char
-identifierSymbol = elements $ ['A'..'Z'] ++ ['a'..'z'] ++ ['\'', '_']
+identifierSymbol = elements $ ['A'..'Z'] ++ ['a'..'z'] ++ "'_"
 
 capitalize :: String -> String
 capitalize (x : xs) = toUpper x : xs
+capitalize _        = error "Cannot capitalize an empty string"
 
 capitalIdentifier :: Gen String
 --capitalIdentifier = (:) <$> capitalLetter <*> (resize 5 $ listOf identifierSymbol)
-capitalIdentifier = concat <$> (resize 2 $ listOf1 $ capitalize <$> elements validNames)
+capitalIdentifier = concat <$> resize 2 (listOf1 $ capitalize <$> elements validNames)
 
 lowerIdentifier :: Gen String
 --lowerIdentifier = (:) <$> lowerLetter <*> (resize 5 $ listOf identifierSymbol)
 lowerIdentifier = elements validNames <++>
-    (concat <$> (resize 1 $ listOf $ capitalize <$> elements validNames))
+    (concat <$> resize 1 (listOf $ capitalize <$> elements validNames))
 
 rightCapitalIdentifier :: Gen String
-rightCapitalIdentifier = intercalate "." <$> (resize 3 $ listOf1 capitalIdentifier)
+rightCapitalIdentifier = intercalate "." <$> resize 3 (listOf1 capitalIdentifier)
 
 rightLowerIdentifier :: Gen String
-rightLowerIdentifier = (resize 2 $ rightCapitalIdentifier) <++> return "." <++> lowerIdentifier
+rightLowerIdentifier = resize 2 rightCapitalIdentifier <++> return "." <++> lowerIdentifier
 
 rightIdentifier :: Gen String
 rightIdentifier = oneof [rightCapitalIdentifier, rightLowerIdentifier]
@@ -49,7 +51,7 @@ data ExpressionVariant = NonLiteral | WithLiterals
 
 expression' :: ExpressionVariant -> Gen Expression
 expression' variant = frequency $
-    [ (1, FunctionApp <$> expression' NonLiteral <*> (resize 4 $ listOf1 arbitrary))
+    [ (1, FunctionApp <$> expression' NonLiteral <*> resize 4 (listOf1 arbitrary))
     , (3, Identifier <$> rightIdentifier) ]
     ++ case variant of WithLiterals -> [ (3, IntLiteral <$> positiveNum)
                                        , (3, DoubleLiteral <$> positiveNum)
@@ -84,7 +86,7 @@ typeLiteral :: TypeLiteralVariant -> Gen TypeLiteral
 typeLiteral variant = frequency $
     [ (3, Parameter <$> lowerLetter)
     , (3, Concrete <$> rightCapitalIdentifier)
-    , (1, Generic <$> rightCapitalIdentifier <*> (resize 3 $ listOf1 (typeLiteral WithNothing)))
+    , (1, Generic <$> rightCapitalIdentifier <*> resize 3 (listOf1 (typeLiteral WithNothing)))
     , (2, Function <$> typeLiteral WithNothing <*> typeLiteral WithUnit) ]
     ++ case variant of WithVar     -> [(3, return Var)]
                        WithUnit    -> [(3, return Unit)]
@@ -117,14 +119,14 @@ dataType = oneof [ data'
 
 data' :: Gen Declaration
 data' = Data <$> capitalIdentifier
-             <*> (resize 3 $ listOf lowerLetter) <*> (resize 4 $ listOf1 dataCase)
+             <*> resize 3 (listOf lowerLetter) <*> resize 4 (listOf1 dataCase)
 
 record :: Gen Declaration
 record = Record <$> capitalIdentifier
-                <*> (resize 4 $ listOf1 ((,) <$> lowerIdentifier <*> typeLiteral WithNothing))
+                <*> resize 4 (listOf1 ((,) <$> lowerIdentifier <*> typeLiteral WithNothing))
 
 dataCase :: Gen (String, [TypeLiteral])
-dataCase = (,) <$> capitalIdentifier <*> (resize 3 $ listOf $ typeLiteral WithNothing)
+dataCase = (,) <$> capitalIdentifier <*> resize 3 (listOf $ typeLiteral WithNothing)
 
 newtype Program = Program [Declaration]
 
@@ -135,9 +137,9 @@ instance Arbitrary Program where
     arbitrary = do
         imports <- resize 3 $ listOf1 import'
         dataTypes <- resize 3 $ listOf1 dataType
-        functions <- concatMap (\(t, d) -> [t, d]) <$> (resize 4 $ listOf1 function)
+        functions <- concatMap (\(t, d) -> [t, d]) <$> resize 4 (listOf1 function)
         return $ Program $ imports ++ dataTypes ++ functions
-    shrink (Program [d])   = []
+    shrink (Program [_])   = []
     shrink (Program decls) = map (Program . return) decls
 
 test :: IO ()

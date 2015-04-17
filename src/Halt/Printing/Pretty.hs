@@ -2,12 +2,8 @@
 module Halt.Printing.Pretty where
 
 import Data.List
-import Data.Maybe
 import Data.Char
 import Halt.AST
-import Halt.Parsing.Parse
-import Halt.Parsing.Indent hiding (indent)
-import Debug.Trace
 
 class PrettyShow a where
     prettyShow :: a -> String
@@ -60,13 +56,13 @@ instance PrettyShow Declaration where
         FunctionType n t   -> n ++ " :: " ++ prettyShow t
         FunctionDecl n a b -> n ++ " " ++ unwords a ++ " ->\n" ++ showStatements b
         Data n g c         -> "data " ++ n ++ " " ++ intersperse ' ' g
-                           ++ " = " ++ (intercalate " | " $ map prettyShow c)
+                           ++ " = " ++ intercalate " | " (map prettyShow c)
         Record n f         -> "record " ++ n ++ " =\n"
-                           ++ (unlines' $ map (("\t" ++) . (\(fn, t) -> fn ++ " :: " ++ prettyShow t)) f)
+                           ++ unlines' (map (("\t" ++) . (\(fn, t) -> fn ++ " :: " ++ prettyShow t)) f)
 
 instance PrettyShow (String, [TypeLiteral]) where
     prettyShow (c, ts) = c ++ " "
-                     ++ (unwords $ map (\t -> parenthesesUnless (isSimpleType t) $ prettyShow t) ts)
+                     ++ unwords (map (\t -> parenthesesUnless (isSimpleType t) $ prettyShow t) ts)
 
 instance PrettyShow TypeLiteral where
     prettyShow = \case
@@ -82,7 +78,7 @@ instance PrettyShow Statement where
         Assignment t n v -> parenthesesUnless (isSimpleType t) (prettyShow t)
                          ++ " " ++ n ++ " = " ++ prettyShow v
         If c t e         -> "if " ++ prettyShow c ++ " then\n" ++ showStatements t
-                         ++ fromMaybe "" (fmap (("\nelse\n" ++) . showStatements) e)
+                         ++ maybe "" (("\nelse\n" ++) . showStatements) e
         For v s bnd bdy  -> "for " ++ v ++ " from " ++ prettyShow s ++ " to " ++ prettyShow bnd
                          ++ "\n" ++ showStatements bdy
         Return v         -> "return " ++ prettyShow v
@@ -104,7 +100,7 @@ instance PrettyShow Expression where
 instance PrettyShow [Declaration] where
     prettyShow d = unlines $ map prettyShow d
 
-
+{-
 
 testPrint = do
     basic <- basicAST
@@ -119,3 +115,4 @@ testParse = do
     let new = parseHelper program str
     print new
     putStrLn $ "Equal: " ++ show (basic == new)
+-}
