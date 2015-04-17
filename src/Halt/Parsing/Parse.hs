@@ -161,7 +161,6 @@ declaration = try importAs
 
 program :: Parser [Declaration]
 program = many1 (declaration <* skipMany (oneOf "\n\t "))
-        --FIXME: Parsing empty lines is potentially broken
 
 parseFile :: String -> IO [Declaration]
 parseFile path = do

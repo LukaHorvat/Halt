@@ -6,7 +6,7 @@ fn str ->
     print ("Trace: " + len)
     if len > 5 then
         return True
-    else
+    else    
         return False
 
 main :: True

@@ -3,6 +3,7 @@ module Halt.Parsing.Indent where
 import Control.Applicative hiding ((<|>), many, optional)
 import Control.Monad
 import Data.Functor.Identity
+import Data.Maybe
 import Text.Parsec hiding (token, State)
 
 type IndentLevel = Int
@@ -20,11 +21,12 @@ indent :: Parser ()
 indent = void (char '\t') <|> void (count 4 (char ' ')) <?> "indentation"
 
 indents :: Int -> Parser ()
-indents n = void (count n indent) <?> (show n) ++ " indentation levels"
+indents n = void (count n indent) <?> show n ++ " indentation levels"
 
 indented :: Parser a -> Parser a
 indented p = try $ modifyState (+ 1) *> p <* modifyState (subtract 1)
 
 singleOrBlock :: Parser a -> Parser [a]
 singleOrBlock p = (char '\n' *> block) <|> (return <$> p)
-    where block = indented $ many1 (withIndent p) --TODO: Parsing empty lines
+    where block = indented $ catMaybes <$> many1 line
+          line  = try (Just <$> withIndent p) <|> try (Nothing <$ (many (oneOf " \t") >> char '\n'))
