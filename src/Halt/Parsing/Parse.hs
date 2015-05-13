@@ -19,7 +19,7 @@ typeLiteral = buildExpressionParser [[Infix (word "->" *> return Function) Assoc
 typeTerm :: Parser TypeLiteral
 typeTerm = try (word "()" *> return Unit <?> "()")
        <|>     parens typeLiteral
-       <|>     (Parameter <$> (lower <* spaces) <?> "type parameter")
+       <|>     (Parameter <$> (lower <* whiteSpace) <?> "type parameter")
        <|> try (Generic  <$> capitalIdentifier <*> many1 typeTerm <?> "generic type")
        <|>     (Concrete  <$> capitalIdentifier <?> "concrete type")
        <?> "type term"
@@ -139,7 +139,7 @@ functionDecl = FunctionDecl
 data' :: Parser Declaration
 data' = Data
    <$> (word "data" *> capitalIdentifier)
-   <*> many (letter <* spaces)
+   <*> many (letter <* whiteSpace)
    <*> (word "=" *> cons `sepBy1` word "|")
    <?> "data declaration"
    where cons = (,) <$> capitalIdentifier <*> many typeLiteral

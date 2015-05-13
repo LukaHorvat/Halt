@@ -8,6 +8,7 @@ import Halt.Utility
 import Control.Applicative
 import Data.Char
 import Data.List
+import Data.Maybe
 import Halt.Printing.Pretty
 
 validNames :: [String]
@@ -60,6 +61,8 @@ expression' variant = frequency $
 
 instance Arbitrary Expression where
     arbitrary = expression' WithLiterals
+    shrink (FunctionApp f args) = f : args
+    shrink _ = []
 
 instance Arbitrary Bound where
     arbitrary = frequency
@@ -79,6 +82,9 @@ instance Arbitrary Statement where
               , (2, For <$> lowerIdentifier <*> arbitrary <*> arbitrary <*> statements3)
               , (3, Return <$> arbitrary)
               , (3, NakedExpr <$> arbitrary) ]
+    shrink (If _ stmts mby) = stmts ++ fromMaybe [] mby
+    shrink (For _ _ _ stmts) = stmts
+    shrink _ = []
 
 data TypeLiteralVariant = WithVar | WithUnit | WithNothing
 
@@ -94,6 +100,9 @@ typeLiteral variant = frequency $
 
 instance Arbitrary TypeLiteral where
     arbitrary = typeLiteral WithVar
+    shrink (Generic _ typs) = typs
+    shrink (Function l r) = [l, r]
+    shrink _ = []
 
 import' :: Gen Declaration
 import' = oneof [Import <$> rightCapitalIdentifier
@@ -133,10 +142,25 @@ newtype Program = Program [Declaration]
 instance Show Program where
     show (Program decls) = prettyShow decls
 
+newtype DataType = DataType { getDeclaration :: Declaration }
+
+shrinkDataType :: Declaration -> [Declaration]
+shrinkDataType (Data name params cases)
+    | length cases > 1 = (Data name params . return) <$> cases
+    | otherwise        = []
+shrinkDataType (Record name fields)
+    | length fields > 1 = (Record name . return) <$> fields
+    | otherwise         = []
+shrinkDataType _ = []
+
+instance Arbitrary DataType where
+    arbitrary = DataType <$> dataType
+    shrink (DataType d) = DataType <$> shrinkDataType d
+
 instance Arbitrary Program where
     arbitrary = do
         imports <- resize 3 $ listOf1 import'
-        dataTypes <- resize 3 $ listOf1 dataType
+        dataTypes <- resize 3 $ listOf1 (getDeclaration <$> arbitrary)
         functions <- concatMap (\(t, d) -> [t, d]) <$> resize 4 (listOf1 function)
         return $ Program $ imports ++ dataTypes ++ functions
     shrink (Program [_])   = []
